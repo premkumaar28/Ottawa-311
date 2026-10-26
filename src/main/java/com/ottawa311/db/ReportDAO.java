@@ -4,6 +4,13 @@ import java.sql.*;
 import java.time.Instant;
 import java.util.*;
 
+
+/**
+ * Report Data Access
+ * Implements database operations for:
+ * PR0002, PR0003, PR0004, PR0005,PR0006, PR0007, PR0008, PR0009, PR0010
+ */
+
 public class ReportDAO {
 
     public static class Report {

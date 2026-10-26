@@ -3,6 +3,13 @@ package com.ottawa311.db;
 import java.sql.*;
 import java.util.Locale;
 
+
+/**
+ * User Data
+ * PR0001: Resident registration, user login authentication
+ */
+
+
 public class UserDAO {
 
     public static class Account {

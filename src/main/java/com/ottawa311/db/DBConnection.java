@@ -8,6 +8,7 @@ import java.util.Properties;
 
 /**
  * Singleton Pattern for managing MySQL Database Connections.
+ * Gets configuration from db.properties and manages MySQL driver setup
  */
 public final class DBConnection {
 	private static String url;

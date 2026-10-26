@@ -5,6 +5,7 @@ import java.util.concurrent.Executors;
 
 /**
  * Multithreaded Observer Service that sends automated status change notifications asynchronously.
+ * PR0011, PR0012
  */
 public class ResidentNotificationService {
 
