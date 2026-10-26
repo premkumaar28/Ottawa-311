@@ -1,11 +1,13 @@
 package com.ottawa311.web;
 
 
-import com.ottawa311.demo.DemoStore;
-import com.ottawa311.demo.DemoStore.Account;
+import com.ottawa311.db.UserDAO;
+import com.ottawa311.db.UserDAO.Account;
+
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.*;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.Locale;
 
 /** PR0001: registration, login, logout and sessions. Authentication adapter is temporary. */
@@ -13,6 +15,8 @@ import java.util.Locale;
 
 @WebServlet("/auth")
 public class AuthServlet extends HttpServlet {
+	
+	private final UserDAO userDAO = new UserDAO();
 	
 	/**
 	 * 
@@ -32,6 +36,7 @@ public class AuthServlet extends HttpServlet {
         if("invalid".equals(req.getParameter("error")))out.append("<p class='error'>Invalid email or password.</p>");
         if("exists".equals(req.getParameter("error")))out.append("<p class='error'>That email is already registered.</p>");
         if("input".equals(req.getParameter("error")))out.append("<p class='error'>Enter a valid email and a password between 8 and 128 characters.</p>");
+        if("db".equals(req.getParameter("error")))out.append("<p class='error'>Database connection error. Please try again.</p>");
         out.append("<p class='muted'>Demo accounts: resident@example.test / resident123; worker@example.test / worker123; sidewalkworker@example.test / worker123; supervisor@example.test / supervisor123.</p>");
         out.append("<form method='post' action='").append(action).append("'>").append(Web.hiddenToken(req));
         out.append("<label>Email<input type='email' name='email' autocomplete='username' maxlength='254' required></label>");
@@ -65,22 +70,31 @@ public class AuthServlet extends HttpServlet {
             return;
         }
         email=email.trim().toLowerCase(Locale.ROOT);
-        if("register".equals(mode)&&!DemoStore.register(email,pass)) {
-            resp.sendRedirect(req.getContextPath()+"/auth?error=exists");
-            return;
-        }
-        Account a=DemoStore.authenticate(email,pass);
-        if(a==null) {
-            resp.sendRedirect(req.getContextPath()+"/auth?error=invalid");
-            return;
-        }
-        HttpSession old=req.getSession(false);
-        if(old!=null)old.invalidate();
-        HttpSession session=req.getSession(true);
-        session.setAttribute("account",a);
-        session.setMaxInactiveInterval(30*60);
-        Web.token(req);
-        resp.sendRedirect(req.getContextPath()+"/reports");
+        
+        
+        
+        try {
+        	if("register".equals(mode)&&!userDAO.register(email,pass)) {
+                resp.sendRedirect(req.getContextPath()+"/auth?error=exists");
+                return;
+            }
+        	Account a=userDAO.authenticate(email,pass);
+            if(a==null) {
+                resp.sendRedirect(req.getContextPath()+"/auth?error=invalid");
+                return;
+            }
+            HttpSession old=req.getSession(false);
+            if(old!=null)old.invalidate();
+            HttpSession session=req.getSession(true);
+            session.setAttribute("account",a);
+            session.setMaxInactiveInterval(30*60);
+            Web.token(req);
+            resp.sendRedirect(req.getContextPath()+"/reports");
+        } catch (SQLException e) {
+            e.printStackTrace();
+            resp.sendRedirect(req.getContextPath()+"/auth?error=db");
+        }        
+        
     }
 
 }

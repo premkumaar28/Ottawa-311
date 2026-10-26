@@ -1,14 +1,15 @@
 package com.ottawa311.web;
 
-import com.ottawa311.demo.DemoStore;
-import com.ottawa311.demo.DemoStore.Account;
-import com.ottawa311.demo.DemoStore.Report;
+import com.ottawa311.db.ReportDAO;
+import com.ottawa311.db.ReportDAO.Report;
+import com.ottawa311.db.UserDAO.Account;
+
 import javax.servlet.ServletException;
 import javax.servlet.annotation.MultipartConfig;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.*;
 import java.io.*;
-import java.nio.file.*;
+import java.sql.SQLException;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 /** Person 1 presentation layer: PR0002, PR0003, PR0005-PR0009, PR0011, PR0012. */
@@ -18,6 +19,9 @@ public class ReportServlet extends HttpServlet {
     /**
 	 * 
 	 */
+	
+	private final ReportDAO reportDAO = new ReportDAO();
+	
 	private static final long serialVersionUID = 1L;
 	private static final Set<String> STATUSES=new HashSet<>(Arrays.asList("SUBMITTED","IN_PROGRESS","RESOLVED"));
     private static final Set<String> DEPARTMENTS=new HashSet<>(Arrays.asList("Roads","Sidewalks"));
@@ -53,7 +57,9 @@ public class ReportServlet extends HttpServlet {
         out.append("<section><h2>").append("RESIDENT".equals(a.role)?"My reports":"WORKER".equals(a.role)?"Department queue":"Supervisor queue (urgent first, then oldest)").append("</h2>");
         out.append("<div class='table-wrap'><table><thead><tr><th>Tracking</th><th>Location / issue</th><th>Category / department</th><th>Urgency</th><th>Status</th><th>Submitted / closed</th><th>Notes</th><th>Actions</th></tr></thead><tbody>");
         int count=0;
-        for(Report r:DemoStore.list())if(visible(a,r)) {
+        try {
+        List<Report> reports = reportDAO.list();
+        for(Report r: reports)if(visible(a,r)) {
             count++;
             out.append("<tr><td><strong>").append(Web.esc(r.id)).append("</strong></td><td>").append(Web.esc(r.location)).append("<p>").append(Web.esc(r.description)).append("</p>");
             if(!r.photoName.isEmpty())out.append("<a href='").append(root).append("/photo?id=").append(Web.esc(r.id)).append("' target='_blank' rel='noopener'>View photo</a>");
@@ -73,6 +79,10 @@ public class ReportServlet extends HttpServlet {
             out.append("</td></tr>");
         }
         if(count==0)out.append("<tr><td colspan='8'>No reports to display.</td></tr>");
+        }catch (SQLException e) {
+            e.printStackTrace();
+            out.append("<tr><td colspan='8' class='error'>Error loading reports from database.</td></tr>");
+        }
         out.append("</tbody></table></div></section>");
         resp.setContentType("text/html;charset=UTF-8");
         resp.getWriter().print(out.append(Web.end()).toString());
@@ -134,7 +144,7 @@ public class ReportServlet extends HttpServlet {
             }
 
             try {
-                DemoStore.create(a.email, loc.trim(), cat, desc.trim(), urg, storedPhotoName);
+            	reportDAO.create(a.email, loc.trim(), cat, desc.trim(), urg, storedPhotoName);
             } catch (RuntimeException exception) {
                 // Only remove the photo created by THIS request, if report creation fails.
                 if (!storedPhotoName.isEmpty()) {
@@ -148,7 +158,7 @@ public class ReportServlet extends HttpServlet {
                 resp.sendError(403);
                 return;
             }
-            Report r=DemoStore.get(req.getParameter("id"));
+            Report r=reportDAO.get(req.getParameter("id"));
             if(r==null) {
                 resp.sendError(404);
                 return;
@@ -162,7 +172,7 @@ public class ReportServlet extends HttpServlet {
                 resp.sendError(400,"Invalid update");
                 return;
             }
-            DemoStore.update(r,status,note.trim());
+            reportDAO.update(r,status,note.trim());
             // Integration: Person 2's ResidentNotificationService observes status changes.
             message="updated";
         } else if("reassign".equals(action)) {
@@ -170,7 +180,7 @@ public class ReportServlet extends HttpServlet {
                 resp.sendError(403);
                 return;
             }
-            Report r=DemoStore.get(req.getParameter("id"));
+            Report r=reportDAO.get(req.getParameter("id"));
             if(r==null) {
                 resp.sendError(404);
                 return;
@@ -180,7 +190,7 @@ public class ReportServlet extends HttpServlet {
                 resp.sendError(400);
                 return;
             }
-            DemoStore.reassign(r,department);
+            reportDAO.reassign(r,department);
             message="reassigned";
         } else {
             resp.sendError(400);
