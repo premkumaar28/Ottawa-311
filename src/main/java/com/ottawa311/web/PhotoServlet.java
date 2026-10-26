@@ -1,8 +1,9 @@
 package com.ottawa311.web;
 
-import com.ottawa311.demo.DemoStore;
-import com.ottawa311.demo.DemoStore.Account;
-import com.ottawa311.demo.DemoStore.Report;
+import com.ottawa311.db.ReportDAO;
+import com.ottawa311.db.UserDAO.Account;
+import com.ottawa311.db.ReportDAO.Report;
+
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -17,6 +18,7 @@ public class PhotoServlet extends HttpServlet {
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
+	private final ReportDAO reportDAO = new ReportDAO();
 
 	 @Override
 	    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -26,7 +28,7 @@ public class PhotoServlet extends HttpServlet {
 	        }
 
 	        Account account = Web.user(request);
-	        Report report = DemoStore.get(request.getParameter("id"));
+	        Report report = reportDAO.get(request.getParameter("id"));
 
 	        if (report == null || report.photoName.isEmpty()) {
 	            response.sendError(404, "This report has no photo");

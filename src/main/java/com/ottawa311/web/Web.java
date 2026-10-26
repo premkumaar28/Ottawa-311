@@ -1,6 +1,6 @@
 package com.ottawa311.web;
 
-import com.ottawa311.demo.DemoStore.Account;
+import com.ottawa311.db.UserDAO.Account;
 import javax.servlet.http.*;
 import java.io.IOException;
 import java.security.SecureRandom;
