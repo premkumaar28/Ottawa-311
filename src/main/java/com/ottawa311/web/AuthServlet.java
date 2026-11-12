@@ -33,15 +33,16 @@ public class AuthServlet extends HttpServlet {
         resp.setContentType("text/html;charset=UTF-8");
         String action=req.getContextPath()+"/auth";
         StringBuilder out = new StringBuilder(Web.start(req,"Sign in or register"));
+        out.append("<p class='page-intro'>Access your infrastructure reports or create a resident account.</p><section class='auth-panel'><h2>Account access</h2>");
         if("invalid".equals(req.getParameter("error")))out.append("<p class='error'>Invalid email or password.</p>");
         if("exists".equals(req.getParameter("error")))out.append("<p class='error'>That email is already registered.</p>");
         if("input".equals(req.getParameter("error")))out.append("<p class='error'>Enter a valid email and a password between 8 and 128 characters.</p>");
         if("db".equals(req.getParameter("error")))out.append("<p class='error'>Database connection error. Please try again.</p>");
-        out.append("<p class='muted'>Demo accounts: resident@example.test / resident123; worker@example.test / worker123; sidewalkworker@example.test / worker123; supervisor@example.test / supervisor123.</p>");
+        out.append("<details class='demo-details'><summary>Show demonstration accounts</summary><p class='helper'>resident@example.test / resident123; worker@example.test / worker123; sidewalkworker@example.test / worker123; supervisor@example.test / supervisor123.</p></details>");
         out.append("<form method='post' action='").append(action).append("'>").append(Web.hiddenToken(req));
         out.append("<label>Email<input type='email' name='email' autocomplete='username' maxlength='254' required></label>");
         out.append("<label>Password<input type='password' name='password' autocomplete='current-password' minlength='8' maxlength='128' required></label>");
-        out.append("<button name='mode' value='login'>Sign in</button><button class='secondary' name='mode' value='register'>Register as resident</button></form>");
+        out.append("<div class='auth-actions'><button name='mode' value='login'>Sign in</button><button class='secondary' name='mode' value='register'>Register as resident</button></div></form></section>");
         resp.getWriter().print(out.append(Web.end()).toString());
     }
     

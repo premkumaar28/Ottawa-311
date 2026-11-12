@@ -4,7 +4,7 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.*;
 import java.io.IOException;
 
-@WebServlet("/")
+@WebServlet("")
 public class HomeServlet extends HttpServlet {
 	
 	/**

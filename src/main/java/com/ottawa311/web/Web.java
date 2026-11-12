@@ -62,7 +62,7 @@ final class Web {
 	        String root = req.getContextPath();
 	        Account a = user(req);
 	        String nav = a==null?"<a href='"+root+"/auth'>Sign in</a>":"<a href='"+root+"/reports'>Reports</a> <form class='nav-form' method='post' action='"+root+"/auth'>"+hiddenToken(req)+"<button name='mode' value='logout'>Log out</button></form>";
-	        return "<!doctype html><html lang='en'><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>"+esc(title)+" | Ottawa 311</title><link rel='stylesheet' href='"+root+"/assets/site.css'></head><body><header><strong>Ottawa 311 — Student MVP</strong><nav>"+nav+"</nav></header><main><h1>"+esc(title)+"</h1>";
+	        return "<!doctype html><html lang='en'><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>"+esc(title)+" | Ottawa 311</title><link rel='stylesheet' href='"+root+"/assets/site.css'></head><body><header><strong>Ottawa 311 | Infrastructure Reporting</strong><nav>"+nav+"</nav></header><main><p class='eyebrow'>Infrastructure reporting portal</p><h1>"+esc(title)+"</h1>";
 	    }
 	    static String end() {
 	        return "</main><footer>Educational demonstration — not an official City of Ottawa service.</footer></body></html>";
