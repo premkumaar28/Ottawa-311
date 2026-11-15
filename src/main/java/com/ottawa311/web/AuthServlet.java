@@ -7,7 +7,6 @@ import com.ottawa311.db.UserDAO.Account;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.*;
 import java.io.IOException;
-import java.sql.SQLException;
 import java.util.Locale;
 
 /** PR0001: registration, login, logout and sessions. Authentication adapter is temporary. */
@@ -91,7 +90,7 @@ public class AuthServlet extends HttpServlet {
             session.setMaxInactiveInterval(30*60);
             Web.token(req);
             resp.sendRedirect(req.getContextPath()+"/reports");
-        } catch (SQLException e) {
+        } catch (RuntimeException e) {
             e.printStackTrace();
             resp.sendRedirect(req.getContextPath()+"/auth?error=db");
         }        

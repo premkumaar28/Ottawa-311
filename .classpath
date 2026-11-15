@@ -6,7 +6,6 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="src" path="src/main/java"/>
-	<classpathentry kind="src" path="src/main/resources"/>
 	<classpathentry kind="src" path="src/main/webapp"/>
 	<classpathentry kind="lib" path="C:/Users/premr/OneDrive/Desktop/Algonq/Fall2026/OOPSD/GroupProj/Jar/javax.servlet-api-4.0.1.jar">
 		<attributes>
