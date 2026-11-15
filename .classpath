@@ -7,6 +7,7 @@
 	</classpathentry>
 	<classpathentry kind="src" path="src/main/java"/>
 	<classpathentry kind="src" path="src/main/webapp"/>
+	<classpathentry kind="src" path="src/test/java"/>
 	<classpathentry kind="lib" path="C:/Users/premr/OneDrive/Desktop/Algonq/Fall2026/OOPSD/GroupProj/Jar/javax.servlet-api-4.0.1.jar">
 		<attributes>
 			<attribute name="module" value="true"/>
@@ -30,5 +31,6 @@
 	</classpathentry>
 	<classpathentry kind="con" path="org.eclipse.jst.j2ee.internal.web.container"/>
 	<classpathentry kind="con" path="org.eclipse.jst.j2ee.internal.module.container"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

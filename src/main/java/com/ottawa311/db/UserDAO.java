@@ -24,6 +24,9 @@ public class UserDAO {
         }
 
         public boolean passwordMatches(String candidate) {
+        	if (password == null || candidate == null) {
+        	    return false;
+        	}
             return this.password.equals(candidate);
         }
     }

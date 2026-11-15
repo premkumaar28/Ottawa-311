@@ -108,6 +108,8 @@ public class ReportDAO {
              ResultSet rs = stmt.executeQuery(SQL_NEXT_ID)) {
             rs.next();
             return "OTT-" + rs.getLong(1);
+        } catch (SQLException e) {
+            throw new DataAccessException("Failed to save report to database", e);
         }
     }
     

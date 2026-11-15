@@ -75,7 +75,7 @@ public final class SchemaInitializer {
     }
 
     /** Remove "-- ..." comments and split the script on semicolons that are outside quotes. */
-    static List<String> splitStatements(String script) {
+   public static List<String> splitStatements(String script) {
         StringBuilder clean = new StringBuilder();
         boolean inQuote = false;
         for (int i = 0; i < script.length(); i++) {
