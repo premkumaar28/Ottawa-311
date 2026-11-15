@@ -8,6 +8,9 @@ public interface ReportRoutingStrategy {
      * @return the department name responsible for handling the report category.
      */
     String getAssignedDepartment();
+    
+    /** @return the  category name shown on the report form (e.g. "Road"). */
+    String getCategory();
 
     /**
      * Checks if this strategy supports the given report category.

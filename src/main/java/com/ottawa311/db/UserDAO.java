@@ -51,7 +51,7 @@ public class UserDAO {
                 }
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Database error during user authentication for email: " + email, e);
+            throw new DataAccessException("Database error during user authentication for email: " + email, e);
         }
 		return null;
     }
@@ -78,7 +78,7 @@ public class UserDAO {
                 return insertStmt.executeUpdate() > 0;
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Database error during resident registration for email: " + email, e);
+            throw new DataAccessException("Database error during resident registration for email: " + email, e);
         }
     }
 }
