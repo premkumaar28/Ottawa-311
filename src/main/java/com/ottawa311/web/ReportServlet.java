@@ -3,6 +3,7 @@ package com.ottawa311.web;
 import com.ottawa311.db.ReportDAO;
 import com.ottawa311.db.ReportDAO.Report;
 import com.ottawa311.db.UserDAO.Account;
+import com.ottawa311.service.StatusChangePublisher;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.MultipartConfig;
@@ -38,6 +39,7 @@ public class ReportServlet extends HttpServlet {
         Account a=Web.user(req);
         String root=req.getContextPath(),csrf=Web.hiddenToken(req);
         StringBuilder out=new StringBuilder(Web.start(req,"Infrastructure reports"));
+        out.append("<p class='page-intro'>Submit and track local infrastructure concerns, or manage assigned work.</p>");
         out.append("<p class='muted'>Signed in as ").append(Web.esc(a.email)).append(" — ").append(Web.esc(a.role));
         if("WORKER".equals(a.role))out.append(" (").append(Web.esc(a.department)).append(")");
         out.append("</p>");
@@ -46,24 +48,24 @@ public class ReportServlet extends HttpServlet {
         if("updated".equals(message))out.append("<p class='success'>Report updated.</p>");
         if("reassigned".equals(message))out.append("<p class='success'>Report reassigned.</p>");
         if("RESIDENT".equals(a.role)) {
-            out.append("<section><h2>File a report</h2><form method='post' action='").append(root).append("/reports' enctype='multipart/form-data'>").append(csrf);
-            out.append("<input type='hidden' name='action' value='create'><label>Location / address<input name='location' maxlength='200' required></label>");
+            out.append("<section><div class='section-heading'><h2>File a report</h2></div><p class='helper'>Required fields are marked by your browser. You may attach one JPEG or PNG image.</p><form class='field-grid' method='post' action='").append(root).append("/reports' enctype='multipart/form-data'>").append(csrf);
+            out.append("<input type='hidden' name='action' value='create'><label>Location / address<input name='location' maxlength='200' placeholder='Street address or nearby intersection' required></label>");
             out.append("<label>Category<select name='category'><option>Road</option><option>Sidewalk</option></select></label>");
-            out.append("<label>Description<textarea name='description' rows='4' maxlength='1000' required></textarea></label>");
+            out.append("<label class='field-full'>Description<textarea name='description' rows='4' maxlength='1000' placeholder='Describe the issue and any useful landmarks' required></textarea></label>");
             out.append("<label>Urgency<select name='urgency'><option>Routine</option><option>Urgent</option></select></label>");
-            out.append("<label>Optional photo (JPEG/PNG, max 3 MB)<input type='file' name='photo' accept='image/jpeg,image/png'></label>");
-            out.append("<button type='submit'>Submit report</button></form></section>");
+            out.append("<label class='field-full'>Optional photo (JPEG/PNG, max 3 MB)<input type='file' name='photo' accept='image/jpeg,image/png'></label>");
+            out.append("<div class='field-full'><button type='submit'>Submit report</button></div></form></section>");
         }
-        out.append("<section><h2>").append("RESIDENT".equals(a.role)?"My reports":"WORKER".equals(a.role)?"Department queue":"Supervisor queue (urgent first, then oldest)").append("</h2>");
+        out.append("<section><div class='section-heading'><h2>").append("RESIDENT".equals(a.role)?"My reports":"WORKER".equals(a.role)?"Department queue":"Supervisor queue (urgent first, then oldest)").append("</h2></div>");
         out.append("<div class='table-wrap'><table><thead><tr><th>Tracking</th><th>Location / issue</th><th>Category / department</th><th>Urgency</th><th>Status</th><th>Submitted / closed</th><th>Notes</th><th>Actions</th></tr></thead><tbody>");
         int count=0;
         try {
         List<Report> reports = reportDAO.list();
         for(Report r: reports)if(visible(a,r)) {
             count++;
-            out.append("<tr><td><strong>").append(Web.esc(r.id)).append("</strong></td><td>").append(Web.esc(r.location)).append("<p>").append(Web.esc(r.description)).append("</p>");
+            out.append("<tr><td><strong>").append(Web.esc(r.id)).append("</strong></td><td><span class='report-location'>").append(Web.esc(r.location)).append("</span><p class='report-description'>").append(Web.esc(r.description)).append("</p>");
             if(!r.photoName.isEmpty())out.append("<a href='").append(root).append("/photo?id=").append(Web.esc(r.id)).append("' target='_blank' rel='noopener'>View photo</a>");
-            out.append("</td><td>").append(Web.esc(r.category)).append(" / ").append(Web.esc(r.department)).append("</td><td>").append(Web.esc(r.urgency)).append("</td><td>").append(Web.esc(r.status)).append("</td><td>").append(Web.esc(DateTimeFormatter.ISO_INSTANT.format(r.submitted)));
+            out.append("</td><td>").append(Web.esc(r.category)).append(" / ").append(Web.esc(r.department)).append("</td><td>").append("Urgent".equals(r.urgency)?"<span class='priority-urgent'>Urgent</span>":Web.esc(r.urgency)).append("</td><td><span class='status status-").append(Web.esc(r.status.toLowerCase(Locale.ROOT).replace('_','-'))).append("'>").append(Web.esc(r.status.replace('_',' '))).append("</span></td><td>").append(Web.esc(DateTimeFormatter.ISO_INSTANT.format(r.submitted)));
             if(r.closed!=null)out.append("<p>Closed: ").append(Web.esc(r.closed.toString())).append("</p>");
             out.append("</td><td>").append(Web.esc(r.note)).append("</td><td>");
             if(!"RESIDENT".equals(a.role)) {
@@ -78,7 +80,7 @@ public class ReportServlet extends HttpServlet {
             }
             out.append("</td></tr>");
         }
-        if(count==0)out.append("<tr><td colspan='8'>No reports to display.</td></tr>");
+        if(count==0)out.append("<tr><td colspan='8' class='empty-state'>No reports to display yet.</td></tr>");
         }catch (SQLException e) {
             e.printStackTrace();
             out.append("<tr><td colspan='8' class='error'>Error loading reports from database.</td></tr>");
@@ -172,8 +174,10 @@ public class ReportServlet extends HttpServlet {
                 resp.sendError(400,"Invalid update");
                 return;
             }
+            String oldStatus=r.status;
             reportDAO.update(r,status,note.trim());
-            // Integration: Person 2's ResidentNotificationService observes status changes.
+            // Observer pattern (PR0010): tell the resident, on a background thread, if the status changed.
+            StatusChangePublisher.publish(r.id,r.owner,oldStatus,status,note.trim());
             message="updated";
         } else if("reassign".equals(action)) {
             if(!"SUPERVISOR".equals(a.role)) {
