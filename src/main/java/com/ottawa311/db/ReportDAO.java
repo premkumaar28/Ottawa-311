@@ -38,29 +38,46 @@ public class ReportDAO {
     }
 
     public Report create(String owner, String location, String category, String description, String urgency, String photoName) {
-        String id = "OTT-" + System.currentTimeMillis() % 100000;
         String department = "Sidewalk".equals(category) ? "Sidewalks" : "Roads";
 
         String sql = "INSERT INTO reports (report_id, owner_email, location, category, description, urgency, photo_name, department, status) " +
                      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'SUBMITTED')";
 
-        try (Connection conn = DBConnection.getInstance().getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        // Tracking numbers count up from OTT-1001. If two requests pick the same number at the
+        // same moment, the PRIMARY KEY rejects the second insert and we simply try the next one.
+        for (int attempt = 0; attempt < 5; attempt++) {
+            try (Connection conn = DBConnection.getInstance().getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setString(1, id);
-            stmt.setString(2, owner);
-            stmt.setString(3, location);
-            stmt.setString(4, category);
-            stmt.setString(5, description);
-            stmt.setString(6, urgency);
-            stmt.setString(7, photoName);
-            stmt.setString(8, department);
+                String id = nextTrackingNumber(conn);
+                stmt.setString(1, id);
+                stmt.setString(2, owner);
+                stmt.setString(3, location);
+                stmt.setString(4, category);
+                stmt.setString(5, description);
+                stmt.setString(6, urgency);
+                stmt.setString(7, photoName);
+                stmt.setString(8, department);
 
-            stmt.executeUpdate();
-            return get(id);
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new RuntimeException("Failed to save report to database", e);
+                stmt.executeUpdate();
+                return get(id);
+            } catch (SQLIntegrityConstraintViolationException duplicateId) {
+                // try again with a fresh number
+            } catch (SQLException e) {
+                e.printStackTrace();
+                throw new RuntimeException("Failed to save report to database", e);
+            }
+        }
+        throw new RuntimeException("Failed to save report: could not allocate a tracking number");
+    }
+
+    /** Next tracking number: one more than the highest OTT-number stored, starting at OTT-1001. */
+    private String nextTrackingNumber(Connection conn) throws SQLException {
+        String sql = "SELECT COALESCE(MAX(CAST(SUBSTRING(report_id, 5) AS UNSIGNED)), 1000) + 1 FROM reports";
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            rs.next();
+            return "OTT-" + rs.getLong(1);
         }
     }
 
