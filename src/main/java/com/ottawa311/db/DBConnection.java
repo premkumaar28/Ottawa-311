@@ -7,32 +7,48 @@ import java.sql.SQLException;
 import java.util.Properties;
 
 /**
- * Singleton Pattern for managing MySQL Database Connections.
- * Gets configuration from db.properties and manages MySQL driver setup
+ * Singleton Pattern for managing MySQL database connections.
+ * Settings come from db.properties and can be overridden with Java system properties
+ * (-Dottawa311.db.url / .user / .password) or environment variables
+ * (OTTAWA311_DB_URL / _USER / _PASSWORD).
  */
 public final class DBConnection {
-	private static String url;
-    private static String user;
-    private static String password;
+    private static final String URL;
+    private static final String USER;
+    private static final String PASSWORD;
 
     private static DBConnection instance;
 
     static {
         Properties props = new Properties();
         try (InputStream in = DBConnection.class.getClassLoader().getResourceAsStream("db.properties")) {
-        	
-                props.load(in);
-                url = props.getProperty("db.url");
-                user = props.getProperty("db.user");
-                password = props.getProperty("db.password");
-                
+            if (in == null) {
+                throw new IllegalStateException("db.properties was not found on the classpath");
+            }
+            props.load(in);
             Class.forName("com.mysql.cj.jdbc.Driver");
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize database configuration or JDBC driver", e);
         }
-}
+        URL = setting("db.url", "ottawa311.db.url", "OTTAWA311_DB_URL", props);
+        USER = setting("db.user", "ottawa311.db.user", "OTTAWA311_DB_USER", props);
+        PASSWORD = setting("db.password", "ottawa311.db.password", "OTTAWA311_DB_PASSWORD", props);
+    }
 
-    private DBConnection() {}
+    private DBConnection() {
+    }
+
+    /** System property wins, then environment variable, then db.properties. */
+    private static String setting(String key, String systemProperty, String envVar, Properties props) {
+        String value = System.getProperty(systemProperty);
+        if (value == null || value.isEmpty()) {
+            value = System.getenv(envVar);
+        }
+        if (value == null || value.isEmpty()) {
+            value = props.getProperty(key);
+        }
+        return value;
+    }
 
     public static synchronized DBConnection getInstance() {
         if (instance == null) {
@@ -42,10 +58,6 @@ public final class DBConnection {
     }
 
     public Connection getConnection() throws SQLException {
-    	Connection conn = DriverManager.getConnection(url, user, password);
-        if (conn == null) {
-            throw new SQLException("Failed to establish database connection (Connection object returned null).");
-        }
-        return conn;
+        return DriverManager.getConnection(URL, USER, PASSWORD);
     }
 }

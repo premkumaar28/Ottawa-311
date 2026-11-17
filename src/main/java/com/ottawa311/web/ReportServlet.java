@@ -3,6 +3,7 @@ package com.ottawa311.web;
 import com.ottawa311.db.ReportDAO;
 import com.ottawa311.db.ReportDAO.Report;
 import com.ottawa311.db.UserDAO.Account;
+import com.ottawa311.router.ReportRouter;
 import com.ottawa311.service.StatusChangePublisher;
 
 import javax.servlet.ServletException;
@@ -13,19 +14,21 @@ import java.io.*;
 import java.sql.SQLException;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-/** Person 1 presentation layer: PR0002, PR0003, PR0005-PR0009, PR0011, PR0012. */
+/**
+ * Presentation layer controller handling infrastructure reports.
+ * Integrates ReportRouter (Strategy Pattern) for department routing and
+ * ResidentNotificationService (Observer Pattern) for async notifications.
+ * Implements PR0002, PR0003, PR0005-PR0009, PR0011, PR0012.
+ */
 @WebServlet("/reports")
 @MultipartConfig(maxFileSize=3*1024*1024,maxRequestSize=4*1024*1024)
 public class ReportServlet extends HttpServlet {
-    /**
-	 * 
-	 */
-	
+  
 	private final ReportDAO reportDAO = new ReportDAO();
-	
 	private static final long serialVersionUID = 1L;
 	private static final Set<String> STATUSES=new HashSet<>(Arrays.asList("SUBMITTED","IN_PROGRESS","RESOLVED"));
-    private static final Set<String> DEPARTMENTS=new HashSet<>(Arrays.asList("Roads","Sidewalks"));
+    //private static final Set<String> DEPARTMENTS=new HashSet<>(Arrays.asList("Roads","Sidewalks"));
+    
     private boolean visible(Account a,Report r) {
         return "SUPERVISOR".equals(a.role)||("RESIDENT".equals(a.role)&&r.owner.equals(a.email))||("WORKER".equals(a.role)&&r.department.equals(a.department));
     }
@@ -43,6 +46,7 @@ public class ReportServlet extends HttpServlet {
         out.append("<p class='muted'>Signed in as ").append(Web.esc(a.email)).append(" — ").append(Web.esc(a.role));
         if("WORKER".equals(a.role))out.append(" (").append(Web.esc(a.department)).append(")");
         out.append("</p>");
+        
         String message=req.getParameter("message");
         if("created".equals(message))out.append("<p class='success'>Report submitted. Your tracking number appears below.</p>");
         if("updated".equals(message))out.append("<p class='success'>Report updated.</p>");
@@ -75,10 +79,15 @@ public class ReportServlet extends HttpServlet {
                 out.append("</select></label><label>Note<input name='note' maxlength='500' value='").append(Web.esc(r.note)).append("'></label><button>Save update</button></form>");
             }
             if("SUPERVISOR".equals(a.role)) {
-                out.append("<form method='post' action='").append(root).append("/reports'>").append(csrf).append("<input type='hidden' name='action' value='reassign'><input type='hidden' name='id' value='").append(Web.esc(r.id)).append("'><label>Assign to<select name='department'>");
-                out.append(opt("Roads",r.department)).append(opt("Sidewalks",r.department)).append("</select></label><button class='secondary'>Reassign</button></form>");
-            }
-            out.append("</td></tr>");
+            	out.append("<form method='post' action='").append(root).append("/reports'>").append(csrf)
+                .append("<input type='hidden' name='action' value='reassign'>")
+                .append("<input type='hidden' name='id' value='").append(Web.esc(r.id)).append("'>")
+                .append("<label>Assign to<select name='department'>");
+             for (String dept : ReportRouter.getValidDepartments()) {
+                 out.append(opt(dept, r.department));
+             }
+             out.append("</select></label><button class='secondary'>Reassign</button></form>");
+        }
         }
         if(count==0)out.append("<tr><td colspan='8' class='empty-state'>No reports to display yet.</td></tr>");
         }catch (SQLException e) {
@@ -89,6 +98,7 @@ public class ReportServlet extends HttpServlet {
         resp.setContentType("text/html;charset=UTF-8");
         resp.getWriter().print(out.append(Web.end()).toString());
     }
+    
     @Override
     // Handle creating, updating, and reassigning reports.
     protected void doPost(HttpServletRequest req,HttpServletResponse resp)throws IOException,ServletException {
@@ -110,6 +120,10 @@ public class ReportServlet extends HttpServlet {
                 resp.sendError(400,"Invalid report details");
                 return;
             }
+            
+         // Strategy Pattern: Resolve assigned department dynamically via ReportRouter
+            String assignedDepartment = ReportRouter.route(cat);
+            
             Part photo=req.getPart("photo");
             byte[] bytes=null;
             String ext="";
@@ -146,7 +160,7 @@ public class ReportServlet extends HttpServlet {
             }
 
             try {
-            	reportDAO.create(a.email, loc.trim(), cat, desc.trim(), urg, storedPhotoName);
+            	reportDAO.create(a.email, loc.trim(), cat, desc.trim(), urg, storedPhotoName, assignedDepartment);
             } catch (RuntimeException exception) {
                 // Only remove the photo created by THIS request, if report creation fails.
                 if (!storedPhotoName.isEmpty()) {
@@ -190,8 +204,8 @@ public class ReportServlet extends HttpServlet {
                 return;
             }
             String department=req.getParameter("department");
-            if(!DEPARTMENTS.contains(department)) {
-                resp.sendError(400);
+            if (!ReportRouter.isValidDepartment(department)) {
+                resp.sendError(400, "Invalid department");
                 return;
             }
             reportDAO.reassign(r,department);

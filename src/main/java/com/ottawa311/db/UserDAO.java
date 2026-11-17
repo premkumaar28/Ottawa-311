@@ -5,7 +5,7 @@ import java.util.Locale;
 
 
 /**
- * User Data
+ * User Data - managing resident authentication and registration.
  * PR0001: Resident registration, user login authentication
  */
 
@@ -24,11 +24,17 @@ public class UserDAO {
         }
 
         public boolean passwordMatches(String candidate) {
+        	if (password == null || candidate == null) {
+        	    return false;
+        	}
             return this.password.equals(candidate);
         }
     }
-
-    public Account authenticate(String email, String pass) throws SQLException{
+    
+    /**
+     * Authenticates a user against the database securely using a parameterized PreparedStatement.
+     */
+    public Account authenticate(String email, String pass) {
         if (email == null || pass == null) return null;
         String sql = "SELECT email, password_hash, role, department FROM users WHERE LOWER(email) = ?";
         
@@ -47,11 +53,16 @@ public class UserDAO {
                     return acc.passwordMatches(pass) ? acc : null;
                 }
             }
+        } catch (SQLException e) {
+            throw new DataAccessException("Database error during user authentication for email: " + email, e);
         }
 		return null;
     }
-
-    public boolean register(String email, String pass) throws SQLException{
+    
+    /**
+     * Registers a new resident account safely with parameterized SQL queries.
+     */
+    public boolean register(String email, String pass) {
         String checkSql = "SELECT COUNT(*) FROM users WHERE LOWER(email) = ?";
         String insertSql = "INSERT INTO users (email, password_hash, role, department) VALUES (?, ?, 'RESIDENT', '')";
 
@@ -69,6 +80,8 @@ public class UserDAO {
                 insertStmt.setString(2, pass);
                 return insertStmt.executeUpdate() > 0;
             }
+        } catch (SQLException e) {
+            throw new DataAccessException("Database error during resident registration for email: " + email, e);
         }
     }
 }
